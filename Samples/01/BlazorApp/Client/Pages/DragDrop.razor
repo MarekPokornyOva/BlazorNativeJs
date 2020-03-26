@@ -1,0 +1,45 @@
+﻿@page "/dad"
+
+<h1>Drag &amp; drop</h1>
+
+<p id="p1" draggable="true" @ondragstart="dragstart_handler">P1 element is draggable.</p>
+<p id="p2" draggable="true" @ondragstart="dragstart_handler">P2 element is draggable.</p>
+<p id="log">@logContent</p>
+<div id="drop1" style="width: 300px; height: 300px; background-color: green;" @ondragover="dragover_handler" @ondrop="drop_handler">&nbsp;</div>
+
+@code
+{
+	string logContent="Log: Start dragging";
+
+	void log(string text)
+	{
+		logContent=text;
+		Console.WriteLine(text);
+	}
+
+	void dragstart_handler(DragEventArgs e)
+	{
+		dynamic @event = e.GetNative();
+		string id = @event.target.id;
+		log("dragstart_handler: "+id);
+		@event.dataTransfer.setData("text/plain", id);
+	}
+
+	void dragover_handler(DragEventArgs e)
+	{
+		dynamic @event = e.GetNative();
+		@event.preventDefault();
+		log("dragover_handler: "+@event.dataTransfer.getData("text/plain"));
+		@event.dataTransfer.dropEffect = "copy";
+	}
+
+	void drop_handler(DragEventArgs e)
+	{
+		dynamic @event = e.GetNative();
+		@event.preventDefault();
+		// Get the id of the target and add the copied element to the target's DOM
+		string data = @event.dataTransfer.getData("text/plain");
+		log("drop_handler: data: "+data);
+		@event.target.appendChild(NativeJs.GetDocument().getElementById(data).cloneNode(true));
+	}
+}

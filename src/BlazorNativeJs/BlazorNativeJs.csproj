@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <PackageTags>Blazor NativeJs</PackageTags>
+    <RepositoryUrl>https://github.com/MarekPokornyOva/BlazorNativeJs</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/MarekPokornyOva/BlazorNativeJs</PackageProjectUrl>
+    <Company>MpSoft</Company>
+    <Authors>Marek Pokorný</Authors>
+    <Product>BlazorNativeJs</Product>
+    <Description>BlazorNativeJs is a project aiming to support direct access to DOM/JS objects from C# code in Blazor WASM application.</Description>
+    <Version>0.1.0-3.2.0-20073.1</Version>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Blazor" Version="3.2.0-preview1.20073.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

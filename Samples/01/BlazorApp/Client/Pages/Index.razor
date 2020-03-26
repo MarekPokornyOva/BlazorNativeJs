@@ -1,0 +1,62 @@
+﻿@page "/"
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.<br/>
+
+<button @onclick="raiseAlert1">Raise alert 1</button><br/>
+
+<button @onclick="raiseAlert2">Raise alert 2</button><br />
+
+<button @onclick="raisePrompt">Raise prompt</button><br />
+
+<button @onclick="nativeEvent">Event handling</button><br />
+
+<button @onclick="h1Change">Change header</button>
+
+@code
+{
+	protected override void OnAfterRender(bool firstRender)
+	{
+		dynamic htmlDocument = NativeJs.GetDocument();
+		/*foreach (string s in ((NativeJsObject)htmlDocument).GetDynamicMemberNames())
+			Console.WriteLine(s);*/
+		dynamic body = htmlDocument.body;
+		dynamic bodyStyle = body.style;
+		body.style.backgroundColor="red";
+	}
+
+	void raiseAlert1(MouseEventArgs e)
+	{
+		dynamic window = NativeJs.GetWindow();
+		window.alert("Simple alert.");
+	}
+
+	void raiseAlert2(MouseEventArgs e)
+	{
+		dynamic window = NativeJs.GetWindow();
+		dynamic alert = window.alert;
+		alert("Even from a variable.");
+	}
+
+	void raisePrompt(MouseEventArgs e)
+	{
+		dynamic window = NativeJs.GetWindow();
+		string userMessage = window.prompt("Share your wish.","This become supported OOTB.");
+		window.alert(userMessage==null ? "You have no wish?" : "Your wish is: "+userMessage);
+	}
+
+	void nativeEvent(MouseEventArgs e)
+	{
+		dynamic @event = e.GetNative();
+		dynamic srcElement = @event.srcElement;
+		string buttonText = srcElement.innerText;
+		NativeJs.GetWindow().alert($"Original button label is {buttonText} now. Setting new one.");
+		@event.srcElement.innerText="The button's label has been set using BlazorNativeJs instead of standard rendering.";
+	}
+
+	void h1Change()
+	{
+		NativeJs.GetDocument().getElementsByTagName("h1")[0].innerText="BlazorNativeJs is great!";
+	}
+}
