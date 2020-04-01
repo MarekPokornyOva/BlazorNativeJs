@@ -1,0 +1,51 @@
+﻿@page "/jqsortable"
+
+<style>
+  #sortable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+  #sortable li { margin: 0 3px 3px 3px; padding: 0.4em; padding-left: 1.5em; font-size: 1.4em; height: 18px; }
+  #sortable li span { position: absolute; margin-left: -1.3em; }
+</style>
+
+<h1>jQuery sortable</h1>
+
+<p>Move an item with Drag&Drop to see the functionality.</p>
+
+<!-- https://jqueryui.com/sortable/ -->
+
+<ul id="sortable">
+	@for (int i = 1;i<8;i++)
+	{
+		<li><span></span>Item @i</li>
+	}
+</ul>
+
+@code
+{
+	protected override void OnAfterRender(bool firstRender)
+	{
+		EnsureInit();
+	}
+
+	bool _initialized;
+	void EnsureInit()
+	{
+		if (_initialized)
+			return;
+
+		//https://api.jqueryui.com/sortable/#event-update
+		dynamic options=NativeJs.NewObject();
+		options.stop=NativeJs.NewFunction<EventArgs,dynamic>(SortableStop);
+
+		dynamic sortable=NativeJs.GetWindow().jQuery("#sortable");
+		sortable.sortable(options);
+		sortable.disableSelection();
+
+		_initialized=true;
+	}
+
+	void SortableStop(EventArgs @event,dynamic ui)
+	{
+		dynamic item = ui.item;
+		NativeJs.GetWindow().alert($"The \"{(string)item[0].innerText}\" is on index {(int)item.index()} now.");
+	}
+}

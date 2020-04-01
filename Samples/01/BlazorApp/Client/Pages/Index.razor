@@ -51,7 +51,7 @@ Welcome to your new app.<br/>
 		dynamic @event = e.GetNative();
 		dynamic srcElement = @event.srcElement;
 		string buttonText = srcElement.innerText;
-		NativeJs.GetWindow().alert($"Original button label is {buttonText} now. Setting new one.");
+		NativeJs.GetWindow().alert($"Original button label is \"{buttonText}\" now. Setting new one.");
 		@event.srcElement.innerText="The button's label has been set using BlazorNativeJs instead of standard rendering.";
 	}
 

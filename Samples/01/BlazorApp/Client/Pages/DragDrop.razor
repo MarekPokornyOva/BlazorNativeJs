@@ -29,7 +29,7 @@
 	{
 		dynamic @event = e.GetNative();
 		@event.preventDefault();
-		log("dragover_handler: "+@event.dataTransfer.getData("text/plain"));
+		log("dragover_handler: "+(string)@event.dataTransfer.getData("text/plain"));
 		@event.dataTransfer.dropEffect = "copy";
 	}
 

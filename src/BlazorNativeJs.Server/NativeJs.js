@@ -101,6 +101,17 @@ var NativeJs = function ()
          dotnetEvent.data['__ref'] = JsObjects.set(event);
          return dotnetEvent;
       },
+      handleFuncArgs: function (args)
+      {
+         if (args) {
+            res = [];
+            for (var a = 0; a < args.length; a++)
+               res.push(processResult(args[a]));
+            return res;
+         }
+         else
+            return args;
+      },
       getIndex: function (objRef, _, indexes)
       {
          var res = JsObjects.get(objRef);

@@ -12,12 +12,12 @@ namespace BlazorNativeJs
 {
 	public static class WebAssemblyEventDispatcher
 	{
-		static Type _webEventDataType = Type.GetType("Microsoft.AspNetCore.Components.Web.WebEventData, Microsoft.AspNetCore.Blazor");
-		static MethodInfo _webEventDataParse = _webEventDataType.GetMethod("Parse",BindingFlags.Public|BindingFlags.Static,null,new Type[] { typeof(WebEventDescriptor),typeof(string) },null);
-		static PropertyInfo _eventHandlerId = _webEventDataType.GetProperty("EventHandlerId");
-		static PropertyInfo _eventFieldInfo = _webEventDataType.GetProperty("EventFieldInfo");
-		static PropertyInfo _eventArgs = _webEventDataType.GetProperty("EventArgs");
-		static MethodInfo _rendererRegistryFind = Type.GetType("Microsoft.AspNetCore.Blazor.Rendering.RendererRegistry, Microsoft.AspNetCore.Blazor").GetMethod("Find",BindingFlags.NonPublic|BindingFlags.Static);
+		readonly static Type _webEventDataType = Type.GetType("Microsoft.AspNetCore.Components.Web.WebEventData, Microsoft.AspNetCore.Blazor");
+		readonly static MethodInfo _webEventDataParse = _webEventDataType.GetMethod("Parse",BindingFlags.Public|BindingFlags.Static,null,new Type[] { typeof(WebEventDescriptor),typeof(string) },null);
+		readonly static PropertyInfo _eventHandlerId = _webEventDataType.GetProperty("EventHandlerId");
+		readonly static PropertyInfo _eventFieldInfo = _webEventDataType.GetProperty("EventFieldInfo");
+		readonly static PropertyInfo _eventArgs = _webEventDataType.GetProperty("EventArgs");
+		readonly static MethodInfo _rendererRegistryFind = Type.GetType("Microsoft.AspNetCore.Blazor.Rendering.RendererRegistry, Microsoft.AspNetCore.Blazor").GetMethod("Find",BindingFlags.NonPublic|BindingFlags.Static);
 
 		[JSInvokable("DispatchEvent")]
 		public static Task DispatchEvent(WebEventDescriptor eventDescriptor,string eventArgsJson)
@@ -204,6 +204,42 @@ namespace BlazorNativeJs
 				pi.SetValue(dest,pi.GetValue(source));
 		}
 		#endregion Native event args
+
+		[JSInvokable(nameof(DispatchFunction))]
+		public static Task DispatchFunction(NativeFuncDescriptor funcDescriptor,string funcArgsJson)
+		{
+			WeakReference funcReference = NativeJs.GetFunction(funcDescriptor.FuncId);
+			object[] args = NativeJs.ParseJsonArgs(funcArgsJson).Cast<object[]>();
+			return InvokeAction(funcReference.Target,args);
+		}
+
+		static Task InvokeAction(object action,object[] args)
+		{
+			MethodInfo invokeMethod = action.GetType().GetMethod("Invoke");
+			ParameterInfo[] invokeMethodParms = invokeMethod.GetParameters();
+
+			//the JS args should be aligned with invokeMethodParms.Length - how to make default values?
+			if (args.Length!=invokeMethodParms.Length)
+				throw new IndexOutOfRangeException("JS parameters count doesn't equal WASM version.");
+
+			for (int a = 0;a<args.Length;a++)
+			{
+				object arg = args[a];
+				Type parmType = invokeMethodParms[a].ParameterType;
+				if ((typeof(EventArgs).IsAssignableFrom(parmType))&&(arg is NativeJsObject njo))
+					args[a]=new NativeEventArgs(EventArgs.Empty,njo);
+				else if (parmType!=typeof(object))
+					args[a]=Convert.ChangeType(arg,parmType);
+			}
+
+			invokeMethod.Invoke(action,args);
+			return Task.CompletedTask;
+		}
+
+		public class NativeFuncDescriptor
+		{
+			public string FuncId { get; set; }
+		}
 	}
 }
 

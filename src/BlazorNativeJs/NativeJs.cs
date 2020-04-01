@@ -57,19 +57,18 @@ namespace BlazorNativeJs
 		static object InvokeJsAndProcessResponse(string identifier,params object[] args)
 		{
 			string res = InvokeJS(identifier,JsonSerializer.Serialize(args,_jsonSerializerOptions));
-			if (res==null)
-				return null;
-			if ((res.Length==_guidStringLen+2/*quotes*/+_refLen)&&(res[0]=='"')&&(string.CompareOrdinal(res,1,_ref,0,_refLen)==0))
-				return new NativeJsObject(Guid.Parse(res.Substring(_refLen+1,_guidStringLen)));
-
-			JsonElement json = (JsonElement)JsonSerializer.Deserialize(res,typeof(object),_jsonSerializerOptions);
-			object result = json.ValueKind switch
-			{
-				JsonValueKind.String=>json.GetString(),
-				_=>throw new NotSupportedException($"{json.ValueKind} type is not supported on reading JS value")
-			};
-			return result;
+			return ParseJsonValue(res);
 		}
+
+		internal static object ParseJsonValue(string value)
+			=> 
+				value==null ? null :
+				(value.Length==_guidStringLen+2/*quotes*/+_refLen)&&(value[0]=='"')&&(string.CompareOrdinal(value,1,_ref,0,_refLen)==0) ? (object)new NativeJsObject(Guid.Parse(value.Substring(_refLen+1,_guidStringLen))) :
+				ParseJsonArgs(value);
+
+		internal static DynamicJsonValue ParseJsonArgs(string value)
+			=> new DynamicJsonValue((JsonElement)JsonSerializer.Deserialize(value,typeof(object),_jsonSerializerOptions));
+		
 
 		public static dynamic GetDocument()
 			=> new NativeJsObject(Guid.Parse(Invoke<string>("eval","JsObjects.set(document)")));
@@ -78,10 +77,10 @@ namespace BlazorNativeJs
 			=> new NativeJsObject(Guid.Parse(Invoke<string>("eval","JsObjects.set(window)")));
 
 		internal static void ReleaseJsObjectReference(NativeJsObject jsObject)
-			=> Invoke("eval",$"JsObjects.remove('{jsObject.NativeId.ToString("D")}')");
+			=> Invoke("eval",$"JsObjects.remove('{jsObject.NativeId:D}')");
 
 		internal static string[] GetMembers(NativeJsObject jsObject)
-			=> Invoke<string[]>("eval",$"var src=JsObjects.get('{jsObject.NativeId.ToString("D")}');var res=[];for (var key in src)res.push(key);res");
+			=> Invoke<string[]>("eval",$"var src=JsObjects.get('{jsObject.NativeId:D}');var res=[];for (var key in src)res.push(key);res");
 
 		internal static object GetMemberValue(NativeJsObject jsObject,string memberName)
 			=> InvokeJsAndProcessResponse("NativeJs.getMemberValue",jsObject.NativeId.ToString("D"),memberName);
@@ -100,6 +99,100 @@ namespace BlazorNativeJs
 
 		internal static object CallSelf(NativeJsObject jsObject,object[] args)
 			=> InvokeJsAndProcessResponse("NativeJs.call",jsObject.NativeId.ToString("D"),args.Select(ResolveJsObject).ToArray());
+
+		public static dynamic NewObject()
+			=> new NativeJsObject(Guid.Parse(Invoke<string>("eval","JsObjects.set({})")));
+
+		readonly static Dictionary<Guid,WeakReference> _functions=new Dictionary<Guid,WeakReference>();
+		public static dynamic NewFunction(Delegate function)
+		{
+			//https://stackoverflow.com/questions/20129236/creating-functions-dynamically-in-js
+			Guid id = Guid.NewGuid();
+			_functions.Add(id,new WeakReference(function));
+			var funBody = $"return DotNet.invokeMethodAsync(\"{nameof(BlazorNativeJs)}\",\"{nameof(WebAssemblyEventDispatcher.DispatchFunction)}\",{{\"funcId\":\"{id:D}\"}},JSON.stringify(NativeJs.handleFuncArgs(arguments)));";
+			return new NativeJsObject(Guid.Parse(Invoke<string>("eval",$"JsObjects.set(new Function('{funBody}'))")),() => _functions.Remove(id));
+		}
+
+		#region NewFunction overloads
+		public static dynamic NewFunction(Action function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T>(Action<T> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2>(Action<T1,T2> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3>(Action<T1,T2,T3> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4>(Action<T1,T2,T3,T4> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4,T5>(Action<T1,T2,T3,T4,T5> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4,T5,T6>(Action<T1,T2,T3,T4,T5,T6> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4,T5,T6,T7>(Action<T1,T2,T3,T4,T5,T6,T7> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4,T5,T6,T7,T8>(Action<T1,T2,T3,T4,T5,T6,T7,T8> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4,T5,T6,T7,T8,T9>(Action<T1,T2,T3,T4,T5,T6,T7,T8,T9> function)
+			=> NewFunction((Delegate)function);
+
+		public static dynamic NewFunction<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>(Action<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10> function)
+			=> NewFunction((Delegate)function);
+		#endregion NewFunction overloads
+
+		internal static WeakReference GetFunction(string id)
+			=> _functions.TryGetValue(Guid.Parse(id),out WeakReference result) ? result : null;
+
+		internal class DynamicJsonValue:DynamicObject
+		{
+			readonly JsonElement _json;
+			internal DynamicJsonValue(JsonElement json)
+				=> _json=json;
+
+			public override bool TryConvert(ConvertBinder binder,out object result)
+			{
+				result=Cast(binder.Type);
+				return true;
+			}
+
+			internal T Cast<T>()
+				=> (T)Cast(typeof(T));
+
+			internal object Cast(Type type)
+				=> Convert.ChangeType(
+					_json.ValueKind switch
+					{
+						JsonValueKind.Undefined => null,
+						JsonValueKind.Null => null,
+						JsonValueKind.True => true,
+						JsonValueKind.False => false,
+						JsonValueKind.String => _json.GetString(),
+						JsonValueKind.Number => type==typeof(byte) ? (object)_json.GetByte()
+								: type==typeof(DateTime) ? (object)_json.GetDateTime()
+								: type==typeof(decimal) ? (object)_json.GetDecimal()
+								: type==typeof(double) ? _json.GetDouble()
+								: type==typeof(short) ? _json.GetInt16()
+								: type==typeof(int) ? _json.GetInt32()
+								: type==typeof(long) ? _json.GetInt64()
+								: type==typeof(sbyte) ? _json.GetSByte()
+								: type==typeof(float) ? _json.GetSingle()
+								: type==typeof(ushort) ? _json.GetUInt16()
+								: type==typeof(uint) ? _json.GetUInt32()
+								: type==typeof(ulong) ? _json.GetUInt64()
+								: throw new NotSupportedException($"Unsupported number type on reading JS value"),
+						JsonValueKind.Array => _json.EnumerateArray().Cast<JsonElement>().Select(x => ParseJsonValue(x.GetRawText())).ToArray(),
+						_ => throw new NotSupportedException($"{_json.ValueKind} type is not supported on reading JS value")
+					}
+					,type);
+		}
 	}
 
 	public class NativeJsObject:DynamicObject
@@ -110,11 +203,18 @@ namespace BlazorNativeJs
 			_id=id;
 		}
 
+		readonly Action _destroyCallback;
+		public NativeJsObject(Guid id,Action destroyCallback):this(id)
+		{
+			_destroyCallback=destroyCallback;
+		}
+
 		internal Guid NativeId => _id;
 
 		~NativeJsObject()
 		{
 			NativeJs.ReleaseJsObjectReference(this);
+			_destroyCallback?.Invoke();
 		}
 
 		public override string ToString()

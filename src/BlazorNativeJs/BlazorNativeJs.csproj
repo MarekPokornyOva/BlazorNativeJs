@@ -9,7 +9,7 @@
     <Authors>Marek Pokorný</Authors>
     <Product>BlazorNativeJs</Product>
     <Description>BlazorNativeJs is a project aiming to support direct access to DOM/JS objects from C# code in Blazor WASM application.</Description>
-    <Version>0.1.0-3.2.0-20073.1</Version>
+    <Version>0.1.1-3.2.0-20073.1</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
