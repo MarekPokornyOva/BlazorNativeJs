@@ -12,11 +12,14 @@ BlazorNativeJs is experimental project aiming to support direct access to DOM/JS
 2) Add `app.UseNativeJsHack();` in your Blazor server app (see \Samples\01\BlazorApp.Server\Startup.cs). This allows BlazorNativeJs to handle event objects and also provide necessary JS code.
 3) Add Nuget package https://www.nuget.org/packages/BlazorNativeJs/ to your Blazor.Client project.
 4) Call `NativeJs.Initialize(...)` from Program.cs (see \Samples\01\BlazorApp.Client\Program.cs).
-5) Sample usage: `NativeJs.GetDocument().getElementsByTagName("h1")[0].innerText="BlazorNativeJs is great!";`
+5) Sample usage: `NativeJs.GetWindow().document.getElementsByTagName("h1")[0].innerText="BlazorNativeJs is great!";`
 6) See \Samples\01\BlazorApp.Client\Pages for further usage examples.
 
 ### How does it work?
 Every object to be returned from JS area is stored to a specific dictionary in browser and a referencing key is returned to C# area instead. C# instantiates a Dynamic object keeping the reference. Accessing a member of the Dynamic object causes call a specific JS function which translates the reference back to the real JS object and process the requested action.
+
+### Expressions
+Some expressions might cause many roundtrips (e.g. NativeJs.GetWindow().document.getElementsByTagName("h1")[0]) between C# and JS. Using Expressions signicicantly lowers that as it only notes the path and evaluates all at once on JS.
 
 ### What if I find a scenario where the solution fails?
 This project is experimental and in early development phase. It's expected such case will happen. Don't hesitate to create issue with minimal repro steps.

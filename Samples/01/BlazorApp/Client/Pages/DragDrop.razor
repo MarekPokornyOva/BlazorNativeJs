@@ -19,27 +19,27 @@
 
 	void dragstart_handler(DragEventArgs e)
 	{
-		dynamic @event = e.GetNative();
+		dynamic @event = e.GetNativeExpr();
 		string id = @event.target.id;
 		log("dragstart_handler: "+id);
-		@event.dataTransfer.setData("text/plain", id);
+		NativeJs.Eval(@event.dataTransfer.setData("text/plain",id));
 	}
 
 	void dragover_handler(DragEventArgs e)
 	{
-		dynamic @event = e.GetNative();
-		@event.preventDefault();
+		dynamic @event = e.GetNativeExpr();
+		NativeJs.Eval(@event.preventDefault());
 		log("dragover_handler: "+(string)@event.dataTransfer.getData("text/plain"));
 		@event.dataTransfer.dropEffect = "copy";
 	}
 
 	void drop_handler(DragEventArgs e)
 	{
-		dynamic @event = e.GetNative();
-		@event.preventDefault();
+		dynamic @event = e.GetNativeExpr();
+		NativeJs.Eval(@event.preventDefault());
 		// Get the id of the target and add the copied element to the target's DOM
 		string data = @event.dataTransfer.getData("text/plain");
 		log("drop_handler: data: "+data);
-		@event.target.appendChild(NativeJs.GetDocument().getElementById(data).cloneNode(true));
+		NativeJs.Eval(@event.target.appendChild(NativeJs.Expr().window.document.getElementById(data).cloneNode(true)));
 	}
 }

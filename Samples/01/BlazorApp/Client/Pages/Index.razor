@@ -12,13 +12,20 @@ Welcome to your new app.<br/>
 
 <button @onclick="nativeEvent">Event handling</button><br />
 
-<button @onclick="h1Change">Change header</button>
+<button @onclick="h1Change">Change header</button><br /><br />
+
+<button @onclick="chain1">Expression chain test 1</button><br />
+
+<button @onclick="chain2">Expression chain test 2</button><br />
+
+<button @onclick="chain3">Expression chain test 3</button>
+
 
 @code
 {
 	protected override void OnAfterRender(bool firstRender)
 	{
-		dynamic htmlDocument = NativeJs.GetDocument();
+		dynamic htmlDocument = NativeJs.GetWindow().document;
 		/*foreach (string s in ((NativeJsObject)htmlDocument).GetDynamicMemberNames())
 			Console.WriteLine(s);*/
 		dynamic body = htmlDocument.body;
@@ -57,6 +64,26 @@ Welcome to your new app.<br/>
 
 	void h1Change()
 	{
-		NativeJs.GetDocument().getElementsByTagName("h1")[0].innerText="BlazorNativeJs is great!";
+		NativeJs.GetWindow().document.getElementsByTagName("h1")[0].innerText="BlazorNativeJs is great!";
+	}
+
+	void chain1()
+	{
+		string s = NativeJs.Expr().window.document.getElementsByTagName("h1")[0].innerText;
+		NativeJs.GetWindow().alert("Header text: "+s);
+	}
+
+	void chain2()
+	{
+		NativeJs.Expr().window.document.getElementsByTagName("h1")[0].innerText="BlazorNativeJs is great!";
+	}
+
+	void chain3()
+	{
+		dynamic h1El = NativeJs.Expr().window.document.getElementsByTagName("h1")[0];
+		h1El=NativeJs.Eval(h1El);
+		string s = h1El.innerText;
+		NativeJs.GetWindow().alert("Old header text: "+s);
+		h1El.innerText="BlazorNativeJs is cute!";
 	}
 }

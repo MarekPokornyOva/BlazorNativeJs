@@ -54,10 +54,10 @@ namespace BlazorNativeJs
 		internal const string _ref = "__ref::";
 		internal const int _refLen = 7;
 		internal const int _guidStringLen = 36;
-		static object InvokeJsAndProcessResponse(string identifier,params object[] args)
+		static object InvokeJsAndProcessResponse(string identifier,bool processResponse,params object[] args)
 		{
 			string res = InvokeJS(identifier,JsonSerializer.Serialize(args,_jsonSerializerOptions));
-			return ParseJsonValue(res);
+			return processResponse ? ParseJsonValue(res) : null;
 		}
 
 		internal static object ParseJsonValue(string value)
@@ -69,36 +69,32 @@ namespace BlazorNativeJs
 		internal static DynamicJsonValue ParseJsonArgs(string value)
 			=> new DynamicJsonValue((JsonElement)JsonSerializer.Deserialize(value,typeof(object),_jsonSerializerOptions));
 		
-
-		public static dynamic GetDocument()
-			=> new NativeJsObject(Guid.Parse(Invoke<string>("eval","JsObjects.set(document)")));
-
 		public static dynamic GetWindow()
 			=> new NativeJsObject(Guid.Parse(Invoke<string>("eval","JsObjects.set(window)")));
 
 		internal static void ReleaseJsObjectReference(NativeJsObject jsObject)
-			=> Invoke("eval",$"JsObjects.remove('{jsObject.NativeId:D}')");
+			=> Invoke($"JsObjects.remove",jsObject.NativeId.ToString("D"));
 
 		internal static string[] GetMembers(NativeJsObject jsObject)
 			=> Invoke<string[]>("eval",$"var src=JsObjects.get('{jsObject.NativeId:D}');var res=[];for (var key in src)res.push(key);res");
 
 		internal static object GetMemberValue(NativeJsObject jsObject,string memberName)
-			=> InvokeJsAndProcessResponse("NativeJs.getMemberValue",jsObject.NativeId.ToString("D"),memberName);
+			=> InvokeJsAndProcessResponse("NativeJs.getMemberValue",true,jsObject.NativeId.ToString("D"),memberName);
 
 		internal static object GetIndex(NativeJsObject jsObject,object[] indexes)
-			=> InvokeJsAndProcessResponse("NativeJs.getIndex",jsObject.NativeId.ToString("D"),null,indexes);
+			=> InvokeJsAndProcessResponse("NativeJs.getIndex",true,jsObject.NativeId.ToString("D"),null,indexes);
 
 		internal static void SetMemberValue(NativeJsObject jsObject,string memberName,object value)
 			=> Invoke("NativeJs.setMemberValue",jsObject.NativeId.ToString("D"),memberName,ResolveJsObject(value));
 
-		static object ResolveJsObject(object value)
+		internal static object ResolveJsObject(object value)
 			=> value is NativeJsObject jsVal ? _ref+jsVal.NativeId.ToString("D") : value;
 
 		internal static object Call(NativeJsObject jsObject,string functionName,object[] args)
-			=> InvokeJsAndProcessResponse("NativeJs.callMember",jsObject.NativeId.ToString("D"),functionName,args.Select(ResolveJsObject).ToArray());
+			=> InvokeJsAndProcessResponse("NativeJs.callMember",true,jsObject.NativeId.ToString("D"),functionName,args.Select(ResolveJsObject).ToArray());
 
 		internal static object CallSelf(NativeJsObject jsObject,object[] args)
-			=> InvokeJsAndProcessResponse("NativeJs.call",jsObject.NativeId.ToString("D"),args.Select(ResolveJsObject).ToArray());
+			=> InvokeJsAndProcessResponse("NativeJs.call",true,jsObject.NativeId.ToString("D"),args.Select(ResolveJsObject).ToArray());
 
 		public static dynamic NewObject()
 			=> new NativeJsObject(Guid.Parse(Invoke<string>("eval","JsObjects.set({})")));
@@ -112,6 +108,21 @@ namespace BlazorNativeJs
 			var funBody = $"return DotNet.invokeMethodAsync(\"{nameof(BlazorNativeJs)}\",\"{nameof(WebAssemblyEventDispatcher.DispatchFunction)}\",{{\"funcId\":\"{id:D}\"}},JSON.stringify(NativeJs.handleFuncArgs(arguments)));";
 			return new NativeJsObject(Guid.Parse(Invoke<string>("eval",$"JsObjects.set(new Function('{funBody}'))")),() => _functions.Remove(id));
 		}
+
+		public static dynamic Expr(dynamic @object)
+			=> @object is NativeJsObject njo
+				? new NativeExpr(njo.NativeId)
+				: throw new InvalidOperationException("Parameter must be NativeJsObject.");
+
+		readonly static dynamic _rootExpr = new RootExpr();
+		public static dynamic Expr()
+			=> _rootExpr;
+
+		public static dynamic Eval(dynamic @object)
+			=> @object is Expr expr ? expr.Eval() : @object;
+
+		internal static object ExecExpr(string json,bool processResponse)
+			=> InvokeJsAndProcessResponse("NativeJs.execExpr",processResponse,json);
 
 		#region NewFunction overloads
 		public static dynamic NewFunction(Action function)
@@ -195,7 +206,7 @@ namespace BlazorNativeJs
 		}
 	}
 
-	public class NativeJsObject:DynamicObject
+	sealed class NativeJsObject:DynamicObject
 	{
 		readonly Guid _id;
 		public NativeJsObject(Guid id)
@@ -231,35 +242,30 @@ namespace BlazorNativeJs
 
 		public override bool TryGetMember(GetMemberBinder binder,out object result)
 		{
-			//return base.TryGetMember(binder,out result);
 			result=NativeJs.GetMemberValue(this,binder.Name);
 			return true;
 		}
 
 		public override bool TrySetMember(SetMemberBinder binder,object value)
 		{
-			//return base.TrySetMember(binder,value);
 			NativeJs.SetMemberValue(this,binder.Name,value);
 			return true;
 		}
 
 		public override bool TryInvokeMember(InvokeMemberBinder binder,object[] args,out object result)
 		{
-			//return base.TryInvokeMember(binder,args,out result);
 			result=NativeJs.Call(this,binder.Name,args);
 			return true;
 		}
 
 		public override bool TryInvoke(InvokeBinder binder,object[] args,out object result)
 		{
-			//return base.TryInvoke(binder,args,out result);
 			result=NativeJs.CallSelf(this,args);
 			return true;
 		}
 
 		public override bool TryGetIndex(GetIndexBinder binder,object[] indexes,out object result)
 		{
-			//return base.TryGetIndex(binder,indexes,out result);
 			result=NativeJs.GetIndex(this,indexes);
 			return true;
 		}

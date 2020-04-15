@@ -251,5 +251,11 @@ namespace Microsoft.AspNetCore.Components.Web
 			=> eventArgs is BlazorNativeJs.WebAssemblyEventDispatcher.INativeEventArgs nativeEventArgs
 				? nativeEventArgs.Native
 				: null;
+
+		public static dynamic GetNativeExpr(this EventArgs eventArgs)
+		{
+			object nativeEventArgs = GetNative(eventArgs);
+			return nativeEventArgs==null ? null : BlazorNativeJs.NativeJs.Expr(nativeEventArgs);
+		}
 	}
 }
